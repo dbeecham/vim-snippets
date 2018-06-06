@@ -66,10 +66,18 @@ snippet exits
 	exit(EXIT_SUCCESS);
 
 # check error
-snippet iff
+snippet c
 	if (-1 == ret) {
 		syslog(LOG_ERR, "%s:%d: ${1:func}: %s", __func__, __LINE__, strerror(errno));
 		return -1;
+	}
+
+
+
+snippet mc
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: ${1:func}: %s", __func__, __LINE__, strerror(errno));
+		exit(EXIT_FAILURE);
 	}
 
 
@@ -150,15 +158,17 @@ snippet do
 ## Functions
 # function definition
 snippet f
-	${1:int} ${2:function_name}(${3})
+	${1:int} ${2:`vim_snippets#Filename('$1')`}${3:}(struct app * app)
 	{
 
 		int ret = 0;
 
-		${4}
+		${0}
 
 		return 0;
 	}
+
+
 # function definition with zero parameters
 snippet fun0
 	${1:void} ${2:function_name}()
@@ -247,7 +257,7 @@ snippet td
 	typedef ${1:int} ${2:MyCustomType};
 # struct
 snippet st
-	struct ${1:`vim_snippets#Filename('$1', 'name')`} {
+	struct ${1:app} {
 		${2:int epoll_fd;}
 	};
 
@@ -382,7 +392,7 @@ snippet stdh
 	#include <sys/stat.h>
 	#include <pthread.h>
 
-	struct ${1:`vim_snippets#Filename('$1')`} {
+	struct app {
 		sigset_t sigset;
 		int socket_pair[2];
 		pthread_t serial_task;
@@ -419,7 +429,7 @@ snippet temp
 
 		openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
 
-		struct `vim_snippet#Filename('$1')` app = {0};
+		struct app app = {0};
 		ret = `vim_snippet#Filename('$1')`_init(&app);
 		if (-1 == ret) {
 			syslog(LOG_ERR, "%s:%d: 
@@ -449,7 +459,7 @@ snippet temp
 	#include "`vim_snippets#Filename('$1.h')`"
 
 	// move to header file
-	struct `vim_snippets#Filename('$1')` {
+	struct app {
 		int epoll_fd;
 		int fd;
 		int fd_watchdog;
@@ -462,7 +472,7 @@ snippet temp
 
 		openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
 
-		struct $1 app = {0};
+		struct app app = {0};
 		ret = app_init(&app);
 		if (-1 == ret) {
 			syslog(LOG_ERR, "%s:%d: app_init() returned -1", __func__, __LINE__);
@@ -475,7 +485,7 @@ snippet temp
 
 ## common stuff
 snippet init
-	struct ${1:`vim_snippets#Filename('$1')`} app = {0};
+	struct app app = {0};
 	ret = $1_init(&app);
 	if (-1 == ret) {
 		syslog(LOG_ERR, "%s:%d: open: %s", __func__, __LINE__, strerror(errno));
@@ -525,6 +535,22 @@ snippet ierrno
 	#include <errno.h>
 
 
+## ipc
+snippet pipe
+	// a pipe for communication between threads/forks.
+	// $1[0] contains the read-end of the pipe, $1[1] contains the write-end.
+	ret = pipe2(${1:app->pipe}, O_CLOEXEC | O_NONBLOCK);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: pipe2: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+snippet socketpair
+	// a bidirectional communication channel between threads/forks
+	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0, ${1:app->socketpair});
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: socketpair: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
 ## open files
 snippet open
 	// open(2) flags:
@@ -764,7 +790,7 @@ snippet epw
 
 snippet epev
 	static int app_epoll_handle_events(
-	    struct `snippet#Filename($1)` * app,
+	    struct app * app,
 		struct epoll_event[EPOLL_NUM_EVENTS],
 		int ep_num_events
 	)
@@ -783,7 +809,7 @@ snippet epev
 
 snippet epdisp
 	static int app_epoll_event_dispatch(
-		struct `snippet#Filename($1)` * app,
+		struct app * app,
 		struct * epoll_event event
 	)
 	{
@@ -839,7 +865,7 @@ snippet timerfds
 snippet signal
 	// NOTE TO SELF: snippets available for signal:
 	//   * sigblock    - set up sigprocmask with sensible stuff
-	//   * sigwait     - signal event handler loop
+	//   * sigw        - signal event handler loop
 	//   * sigemptyset
 	//   * sigaddset
 	//   * sigprocmask
@@ -913,5 +939,63 @@ snippet sigblock
 		return -1;
 	}
 
+
+
+snippet sigw
+	siginfo_t siginfo;
+	int signal_number = 0;
+	for (signal_number = sigwaitinfo(${1:&app->sigset}, &siginfo);
+	     signal_number != -1;
+	     signal_number = sigwaitinfo(${1:&app->sigset}, &siginfo))
+	{
+		syslog(LOG_INFO, "signal cought");
+		// dispatch on siginfo...
+		// pthread_cancel -> pthread_join?
+		// write to stderr, out?
+	}
+	if (-1 == signal_number) {
+		syslog(LOG_ERR, "%s:%d: sigwaitinfo: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+## threading
+snippet pthread
+	// NOTE TO SELF: snippets available for pthread:
+	//   * pthreadc - create pthread
+	//   * pthreadd - cancel (delete) a pthread (async)
+	//   * pthreadj - join a pthread
+	//   * pthreadf - a pthread function definition
+	// Remember to #include <pthread.h> (snip 'ipthread')
+
+
+snippet pthreadc
+	ret = pthread_create(${1:&app->}${2:socketcan_task}, NULL, ${3:socketcan_task}, ${4:app});
+	if (0 != ret) {
+		syslog(LOG_ERR, "%s:%d: pthread_create: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+snippet pthreadf
+	void * ${1:`vim_snippets#Filename('$1', 'socketcan_task')`}(void * arg)
+	{
+		struct app * app = arg;
+
+		${0}
+
+		return NULL;
+	}
+
+
+snippet pthreadj
+	ret = pthread_join(
+		/* task = */ ${1:app->socketcan_task}, 
+		/* ret  = */ ${2:NULL}
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: pthread_join: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
 
 
