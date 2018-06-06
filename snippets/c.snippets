@@ -1,17 +1,18 @@
+## ifndef ${1:`toupper(vim_snippets#Filename('$1_H', 'UNTITLED_H'))`}
 ## Main
 # main
 snippet main
-	int main(int argc, const char *argv[]) {
+	int main(int argc, const char *argv[])
+	{
+
+		int ret = 0;
+
+		openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
+
 		${0}
+
 		return 0;
 	}
-# main(void)
-snippet mainn
-	int main(void) {
-		${0}
-		return 0;
-	}
-##
 ## Preprocessor
 # #include <...>
 snippet inc
@@ -40,13 +41,10 @@ snippet #if
 	#endif
 # header include guard
 snippet once
-	#ifndef ${1:`toupper(vim_snippets#Filename('$1_H', 'UNTITLED_H'))`}
+	#pragma once
 
-	#define $1
 
-	${0}
 
-	#endif /* end of include guard: $1 */
 # Disable C++ name mangling in C headers
 snippet nocxx
 	#ifdef __cplusplus
@@ -60,9 +58,25 @@ snippet nocxx
 	#endif
 ##
 ## Control Statements
+# quit
+snippet exit
+	exit(EXIT_FAILURE);
+
+snippet exits
+	exit(EXIT_SUCCESS);
+
+# check error
+snippet iff
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: ${1:func}: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
 # if
 snippet if
-	if (${1:true}) {
+	if (${1:-1 == ret}) {
 		${0:${VISUAL}}
 	}
 snippet ife
@@ -136,8 +150,14 @@ snippet do
 ## Functions
 # function definition
 snippet f
-	${1:void} ${2:function_name}(${3}) {
+	${1:int} ${2:function_name}(${3})
+	{
+
+		int ret = 0;
+
 		${4}
+
+		return 0;
 	}
 # function definition with zero parameters
 snippet fun0
@@ -227,14 +247,12 @@ snippet td
 	typedef ${1:int} ${2:MyCustomType};
 # struct
 snippet st
-	/*! \struct $1
-	 *  \brief ${3:Brief struct description}
-	 *
-	 *  ${4:Detailed description}
-	 */
-	struct ${1:`vim_snippets#Filename('$1_t', 'name')`} {
-		${2:Data} /*!< ${4:Description} */
-	}${5: /* optional variable list */};
+	struct ${1:`vim_snippets#Filename('$1', 'name')`} {
+		${2:int epoll_fd;}
+	};
+
+
+
 # typedef struct
 snippet tds
 	/*! \struct $2
@@ -342,3 +360,558 @@ snippet todo
 # This is kind of convenient
 snippet .
 	[${1}]
+## templates
+snippet stdh
+	#pragma once
+
+	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
+	// glibc-specific features. Being able to compile to e.g. musl or uclibc
+	// makes porting to embedded linux systems much easier (and generally
+	// pressures the programmer into stricter and better programming practices).
+	#define _POSIX_C_SOURCE 201805L
+
+	#include <stdlib.h>
+	#include <stdint.h>
+	#include <stdbool.h>
+	#include <stdio.h>
+	#include <unistd.h>
+	#include <fcntl.h>
+	#include <errno.h>
+	#include <string.h>
+	#include <syslog.h>
+	#include <sys/stat.h>
+	#include <pthread.h>
+
+	struct ${1:`vim_snippets#Filename('$1')`} {
+		sigset_t sigset;
+		int socket_pair[2];
+		pthread_t serial_task;
+		int serial_task_epoll_fd;
+		int serial_task_fd;
+		int serial_task_fd_watchdog;
+	};
+
+
+snippet temp
+	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
+	// glibc-specific features. Being able to compile to e.g. musl or uclibc
+	// makes porting to embedded linux systems much easier (and generally
+	// pressures the programmer into stricter and better programming practices).
+	#define _POSIX_C_SOURCE 201805L
+
+	#include <stdlib.h>
+	#include <stdint.h>
+	#include <stdbool.h>
+	#include <stdio.h>
+	#include <unistd.h>
+	#include <fcntl.h>
+	#include <errno.h>
+	#include <string.h>
+	#include <syslog.h>
+	#include <sys/stat.h>
+
+	#include "`vim_snippets#Filename('$1.h')`" // (snippet: 'stdh')
+
+	int main(const int argc, const char *argv[])
+	{
+
+		int ret = 0;
+
+		openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
+
+		struct `vim_snippet#Filename('$1')` app = {0};
+		ret = `vim_snippet#Filename('$1')`_init(&app);
+		if (-1 == ret) {
+			syslog(LOG_ERR, "%s:%d: 
+		}
+
+		exit(EXIT_SUCCESS);	
+	}
+
+
+## epolltemp
+	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
+	// glibc-specific features. Being able to compile to e.g. musl or uclibc
+	// makes porting to embedded linux systems much easier (and generally
+	// pressures the programmer into stricter and better programming practices).
+	#define _POSIX_C_SOURCE 201805L
+
+	#include <unistd.h>
+	#include <stdlib.h>
+	#include <stdio.h>
+	#include <fcntl.h>
+	#include <stdint.h>
+	#include <stdbool.h>
+	#include <syslog.h>
+	#include <sys/stat.h>
+	#include <sys/epoll.h>
+
+	#include "`vim_snippets#Filename('$1.h')`"
+
+	// move to header file
+	struct `vim_snippets#Filename('$1')` {
+		int epoll_fd;
+		int fd;
+		int fd_watchdog;
+	};
+
+	int main(const int argc, const char *argv[])
+	{
+
+		int ret = 0;
+
+		openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
+
+		struct $1 app = {0};
+		ret = app_init(&app);
+		if (-1 == ret) {
+			syslog(LOG_ERR, "%s:%d: app_init() returned -1", __func__, __LINE__);
+			exit(EXIT_FAILURE);
+		}
+
+		exit(EXIT_SUCCESS);	
+	}
+
+
+## common stuff
+snippet init
+	struct ${1:`vim_snippets#Filename('$1')`} app = {0};
+	ret = $1_init(&app);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: open: %s", __func__, __LINE__, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+
+
+## common includes
+snippet feat
+	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
+	// glibc-specific features. Being able to compile to e.g. musl or uclibc
+	// makes porting to embedded linux systems much easier (and generally
+	// pressures the programmer into stricter and better programming practices).
+	#define _POSIX_C_SOURCE 201805L
+
+
+snippet icom
+	#include <stdlib.h>
+	#include <stdint.h>
+	#include <stdbool.h>
+	#include <stdio.h>
+	#include <unistd.h>
+	#include <fcntl.h>
+	#include <errno.h>
+	#include <string.h>
+	#include <syslog.h>
+	#include <sys/stat.h>
+	#include <sys/epoll.h>
+	#include <sys/timerfd.h>
+
+
+snippet isyslog
+	#include <syslog.h>
+
+
+snippet itimerfd
+	// remember to set _POSIX_C_SOURCE.
+	#include <sys/timerfd.h>
+
+
+snippet iepoll
+	#include <sys/epoll.h>
+
+
+snippet ierrno
+	#include <errno.h>
+
+
+## open files
+snippet open
+	// open(2) flags:
+	//   O_RDONLY   - read only
+	//   O_WRONLY   - write only
+	//   O_RDWR     - read/write
+	//   O_CREAT    - create if does not exist (see open(2))
+	//   O_EXCL     - use with O_CREAT to guarantee creation of file
+	//   O_SYNC     - write(2) will sync to hardware before returning
+	//   O_DIRECT   - try to not cache reads and writes (probably use O_SYNC instead)
+	//   O_APPEND   - atomically append to file (seeking -> writing is not atomic)
+	//   O_ASYNC    - use signal-driven I/O; default is SIGIO (warning!)
+	//   O_CLOEXEC  - closes the file on exec() - just do it.
+	//                this interacts badly with threads, signal will be sent to
+	//                random thread in the program. If signal-driven I/O is
+	//                wanted, then change the signal to some real-time signal,
+	//                and implement synchronous signal handing using
+	//                sigwaitinfo(2).
+	//   O_NONBLOCK - open in non-blocking mode - is generally a good idea to prevent deadlock
+	//   O_TMPFLIE  - create temporary file; filename specifies directory.
+	${1:app->fd} = open(
+		/* path  = */ ${2:"/dev/urandom"},
+		/* flags = */ ${3:O_RDONLY} | O_CLOEXEC | O_NONBLOCK
+	);
+	if (-1 == $1) {
+		syslog(LOG_ERR, "%s:%d: open: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+## Syslog
+snippet syslog
+	// NOTE TO SELF: snippets available for syslog:
+	//   * openlog - opens syslog
+	//   * err     - syslog() error message
+	//   * info    - syslog() info message
+	// Remember to #include <syslog.h> (snip 'isyslog')
+
+
+
+snippet openlog
+	// Remember to #include <syslog.h> (snip isyslog)
+	openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
+
+
+
+snippet err
+	syslog(LOG_ERR, "%s:%d: ${1:func}: %s", __func__, __LINE__, strerror(errno));
+
+
+snippet info
+	syslog(LOG_INFO, "${1:msg}"${2:});
+
+
+## Epoll
+snippet epoll
+	// NOTE TO SELF: snippets available for epoll:
+	//   * epc - create epoll
+	//   * epa - add fd to epoll
+	//   * epd - delete fd from epoll
+	//   * epm - modify (re-arm) fd in epoll
+	//   * epw - main epoll_wait loop
+	// To use epoll, remember to #include <sys/epoll.h> (snip 'iepoll')
+
+
+snippet epc
+	// Create the epoll instance
+	${1:app->`vim_snippets#Filename('$1')`_epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
+	if (-1 == $1) {
+		syslog(LOG_ERR, "%s:%d: epoll_create: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+	
+
+
+snippet ep_creat
+	int ${1:epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
+	if (-1 == $1) {
+		syslog(LOG_ERR, "%s:%d: epoll_create: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+snippet epoll_create
+	int ${1:epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
+	if (-1 == $1) {
+		syslog(LOG_ERR, "%s:%d: epoll_create: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+snippet epoll_add
+	ret = epoll_ctl(
+		${1:epoll_fd},
+		EPOLL_CTL_ADD,
+	    ${2:fd},
+		&(struct epoll_event){
+			.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT,
+			.data = {
+				.fd = $2
+			}
+		}
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+snippet epa
+	ret = epoll_ctl(
+		${1:app->`vim_snippets#Filename('$1')`_epoll_fd},
+		EPOLL_CTL_ADD,
+	    ${2:fd},
+		&(struct epoll_event){
+			.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT,
+			.data = {
+				.fd = $2
+			}
+		}
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+	
+snippet ep_add
+	ret = epoll_ctl(
+		${1:epoll_fd},
+		EPOLL_CTL_ADD,
+	    ${2:fd},
+		&(struct epoll_event){
+			.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT,
+			.data = {
+				.fd = $2
+			}
+		}
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+	
+snippet epr
+	// Remember to close($2) before removing it from epoll, see
+	// https://idea.popcount.org/2017-03-20-epoll-is-fundamentally-broken-22/
+	ret = epoll_ctl(
+		${1:epoll_fd},
+		EPOLL_CTL_DEL,
+	    ${2:fd},
+		NULL
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+	
+snippet epd
+	// Remember to close($2) before removing it from epoll, see
+	// https://idea.popcount.org/2017-03-20-epoll-is-fundamentally-broken-22/
+	ret = epoll_ctl(
+		${1:epoll_fd},
+		EPOLL_CTL_DEL,
+	    ${2:fd},
+		NULL
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+	
+
+snippet epoll_remove
+	// Remember to close($2) before removing it from epoll, see
+	// https://idea.popcount.org/2017-03-20-epoll-is-fundamentally-broken-22/
+	ret = epoll_ctl(
+		${1:epoll_fd},
+		EPOLL_CTL_DEL,
+	    ${2:fd},
+		NULL
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+	
+
+snippet epm
+	// Re-arm EPOLLONESHOT file descriptor in epoll
+	ret = epoll_ctl(
+		${1:epoll_fd},
+		EPOLL_CTL_MOD,
+		${2:fd},
+		&(struct epoll_event){
+			.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT,
+			.data = {
+				.fd = $2
+			}
+		}
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+snippet epw
+	int ep_num_events = 0;
+	struct epoll_events events[EPOLL_NUM_EVENTS];
+	for (ep_num_events = epoll_wait(${1:app->`vim_snippets#Filename('$1')`_epoll_fd}, ep_events, EPOLL_NUM_EVENTS, -1);
+	     ep_num_events > 0;
+	     ep_num_events = epoll_wait($1, ep_events, EPOLL_NUM_EVENTS, -1))
+	{
+		// (snippet: epev)
+		ret = ${2:`vim_snippets#Filename('$1')`}_epoll_handle_events(${2:app}, ep_events, ep_num_events);
+		if (-1 == ret) {
+			break;
+		}
+	}
+	if (-1 == ep_num_events) {
+		syslog(LOG_ERR, "%s:%d: epoll_wait: %s", __func__, __LINE__, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+
+snippet epev
+	static int app_epoll_handle_events(
+	    struct `snippet#Filename($1)` * app,
+		struct epoll_event[EPOLL_NUM_EVENTS],
+		int ep_num_events
+	)
+	{
+		int ret = 0;
+		for (int i = 0; i < ep_num_events; i++) {
+
+			(snippet: epdisp)
+			ret = app_epoll_event_dispatch(app, &epoll_events[i]);
+			if (0 != ret) {
+				return ret;
+			}
+		}
+	}
+
+
+snippet epdisp
+	static int app_epoll_event_dispatch(
+		struct `snippet#Filename($1)` * app,
+		struct * epoll_event event
+	)
+	{
+		if (event->data.fd == app->fd)
+			return app_epoll_event_fd(app, event);
+
+		syslog(LOG_WARN, "No match on epoll event.");
+		return 0;
+	}
+
+
+## timerfds
+snippet timerfd
+	// NOTE TO SELF: snippets available for timerfd:
+	//   * timerfdc - create a timerfd
+	//   * timerfds - timerfd_settime
+	// Remember to #include <sys/timerfd.h> (snip 'itimerfd')
+
+
+
+snippet timerfdc
+	// create timerfd
+	${1:app->nats_watchdog} = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);
+	if (-1 == $1) {
+		syslog(LOG_ERR, "%s:%d: timerfd_create: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+snippet timerfds
+	// arm timerfd
+	ret = timerfd_settime(
+		/* fd        = */ ${1:app->nats_watchdog},
+		/* opt       = */ 0,
+		/* timerspec = */ &(struct itimerspec) {
+			.it_interval = {0},
+			.it_value = {
+				.tv_sec  = 10,
+				.tv_nsec = 0
+			}
+		},
+		/* old_ts    = */ NULL
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: timerfd_settime: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+## signals
+snippet signal
+	// NOTE TO SELF: snippets available for signal:
+	//   * sigblock    - set up sigprocmask with sensible stuff
+	//   * sigwait     - signal event handler loop
+	//   * sigemptyset
+	//   * sigaddset
+	//   * sigprocmask
+	// Remember to #include <signal.h> (snip 'isignal') and set feature test def
+
+
+snippet sigemptyset
+	ret = sigemptyset(${1:app->sigset});
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigemptyset: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+snippet sigaddset
+	ret = sigaddset(${1:app->sigset}, ${2:SIGPIPE});
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+	
+snippet sigprocmask
+	ret = sigprocmask(
+			/* how = */ SIG_BLOCK,
+			/* set = */ ${1:app->sigset},
+			/* old = */ NULL
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigprocmask: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
+snippet sigblock
+	// block signals; use sigwaitinfo to synchronously receive these signals instead.
+	ret = sigemptyset(${1:app->sigset});
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigemptyset: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+	ret = sigaddset($1, SIGPIPE);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+	ret = sigaddset($1, SIGTERM);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+	ret = sigaddset($1, SIGINT);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+	ret = sigprocmask(
+			/* how = */ SIG_BLOCK,
+			/* set = */ $1,
+			/* old = */ NULL
+	);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d: sigprocmask: %s", __func__, __LINE__, strerror(errno));
+		return -1;
+	}
+
+
+
