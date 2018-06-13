@@ -703,7 +703,7 @@ snippet ep_add
 
 	
 snippet epr
-	// Remember to close($2) before removing it from epoll, see
+	// Remember to EPOLL_CTL_DEL *before* closing the file descriptor, see
 	// https://idea.popcount.org/2017-03-20-epoll-is-fundamentally-broken-22/
 	ret = epoll_ctl(
 		${1:epoll_fd},
