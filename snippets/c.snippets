@@ -616,55 +616,13 @@ snippet epoll
 	//   * epm - modify (re-arm) fd in epoll
 	//   * epw - main epoll_wait loop
 	// To use epoll, remember to #include <sys/epoll.h> (snip 'iepoll')
-
-
 snippet epc
 	// Create the epoll instance
-	${1:app->`vim_snippets#Filename('$1')`_epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
+	${1:`vim_snippets#Filename('$1')`->epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
 	if (-1 == $1) {
-		syslog(LOG_ERR, "%s:%d: epoll_create: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: epoll_create1: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
-	
-
-
-snippet ep_creat
-	int ${1:epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
-	if (-1 == $1) {
-		syslog(LOG_ERR, "%s:%d: epoll_create: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
-
-
-snippet epoll_create
-	int ${1:epoll_fd} = epoll_create1(EPOLL_CLOEXEC);
-	if (-1 == $1) {
-		syslog(LOG_ERR, "%s:%d: epoll_create: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
-
-
-snippet epoll_add
-	ret = epoll_ctl(
-		${1:epoll_fd},
-		EPOLL_CTL_ADD,
-	    ${2:fd},
-		&(struct epoll_event){
-			.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLET | EPOLLONESHOT,
-			.data = {
-				.fd = $2
-			}
-		}
-	);
-	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
-
-
 snippet epa
 	ret = epoll_ctl(
 		${1:`vim_snippets#Filename('$1')`->epoll_fd},
@@ -681,7 +639,6 @@ snippet epa
 		syslog(LOG_ERR, "%s:%d:%s: epoll_ctl: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
-
 snippet epr
 	// Remember to EPOLL_CTL_DEL *before* closing the file descriptor, see
 	// https://idea.popcount.org/2017-03-20-epoll-is-fundamentally-broken-22/
