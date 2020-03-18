@@ -722,24 +722,22 @@ snippet epw
 	}
 	${0}
 snippet epev
-	static int app_epoll_handle_events(
-	    struct app * app,
-		struct epoll_event[EPOLL_NUM_EVENTS],
-		int ep_num_events
+	static int `vim_snippets#Filename('$1')`_epoll_handle_events (
+	    struct `vim_snippets#Filename('$1')`_s * `vim_snippets#Filename('$1')`,
+		struct epoll_event epoll_events[EPOLL_NUM_EVENTS],
+		int ep_events_len
 	)
 	{
 		int ret = 0;
-		for (int i = 0; i < ep_num_events; i++) {
-
-			(snippet: epdisp)
-			ret = app_epoll_event_dispatch(app, &epoll_events[i]);
+		for (int i = 0; i < ep_events_len; i++) {
+			// (snippet: epdisp)
+			ret = `vim_snippets#Filename('$1')`_epoll_event_dispatch(`vim_snippets#Filename('$1')`, &epoll_events[i]);
 			if (0 != ret) {
 				return ret;
 			}
 		}
 	}
-
-
+	${0}
 snippet epdisp
 	static int app_epoll_event_dispatch(
 		struct app * app,
