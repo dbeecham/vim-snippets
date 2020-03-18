@@ -703,27 +703,24 @@ snippet epm
 		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
 		return -1;
 	}
-
-
 snippet epw
-	int ep_num_events = 0;
-	struct epoll_events events[EPOLL_NUM_EVENTS];
-	for (ep_num_events = epoll_wait(${1:app->`vim_snippets#Filename('$1')`_epoll_fd}, ep_events, EPOLL_NUM_EVENTS, -1);
-	     ep_num_events > 0;
-	     ep_num_events = epoll_wait($1, ep_events, EPOLL_NUM_EVENTS, -1))
+	int ep_events_len = 0;
+	struct epoll_event ep_events[EPOLL_NUM_EVENTS];
+	for (ep_events_len = epoll_wait(${1:`vim_snippets#Filename('$1')`->epoll_fd}, ep_events, EPOLL_NUM_EVENTS, -1);
+	     ep_events_len > 0;
+	     ep_events_len = epoll_wait($1, ep_events, EPOLL_NUM_EVENTS, -1))
 	{
 		// (snippet: epev)
-		ret = ${2:`vim_snippets#Filename('$1')`}_epoll_handle_events(${2:app}, ep_events, ep_num_events);
+		ret = ${2:`vim_snippets#Filename('$1')`}_epoll_handle_events(${2:`vim_snippets#Filename('$1')`}, ep_events, ep_events_len);
 		if (-1 == ret) {
 			break;
 		}
 	}
-	if (-1 == ep_num_events) {
-		syslog(LOG_ERR, "%s:%d: epoll_wait: %s", __func__, __LINE__, strerror(errno));
+	if (-1 == ep_events_len) {
+		syslog(LOG_ERR, "%s:%d:%s: epoll_wait: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-
-
+	${0}
 snippet epev
 	static int app_epoll_handle_events(
 	    struct app * app,
