@@ -2,7 +2,10 @@
 ## Main
 # main
 snippet main
-	int main(int argc, const char *argv[])
+	int main (
+	    int argc,
+		const char *argv[]
+	)
 	{
 
 		int ret = 0;
@@ -60,11 +63,9 @@ snippet nocxx
 ## Control Statements
 # quit
 snippet exit
-	exit(EXIT_FAILURE);
-
+	exit(EXIT_FAILURE);${0}
 snippet exits
-	exit(EXIT_SUCCESS);
-
+	exit(EXIT_SUCCESS);${0}
 # check error
 snippet c
 	if (-1 == ret) {
@@ -158,7 +159,9 @@ snippet do
 ## Functions
 # function definition
 snippet f
-	${1:int} ${2:`vim_snippets#Filename('$1')`}${3:}(struct app * app)
+	${1:int} ${2:`vim_snippets#Filename('$1')`}${3:} (
+	    struct `vim_snippets#Filename('$1')`_s * `vim_snippets#Filename('$1')`
+	)
 	{
 
 		int ret = 0;
@@ -303,6 +306,78 @@ snippet prf
 	printf("${1:} = %f\n", $1);
 snippet prx
 	printf("${1:} = %${2}\n", $1);
+## socket/server stuff
+snippet server
+	struct addrinfo *servinfo, *p;
+	ret = getaddrinfo(
+		/* host = */ HOST,
+		/* port = */ PORT, 
+		/* hints = */ &(struct addrinfo) {
+			.ai_family = AF_UNSPEC,
+			.ai_socktype = SOCK_STREAM
+		},
+		/* servinfo = */ &servinfo
+	);
+	if (0 != ret) {
+		syslog(LOG_ERR, "%s:%d:%s: getaddrinfo:: %s", __FILE__, __LINE__, __func__, gai_strerror(ret));
+		return -1;
+	}
+
+	// Loop over the results from getaddrinfo and try to bind them up.
+	for (p = servinfo; p != NULL; p = p->ai_next) {
+
+		// Create a socket
+		${1:app->tcp_fd} = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+		if (-1 == $1) {
+			syslog(LOG_WARNING, "%s:%d:%s: socket: %s", __FILE__, __LINE__, __func__, strerror(errno));
+			// let's try the next entry...
+			continue;
+		}
+
+		// Set the socket REUSEADDR - this makes sure that we can start the
+		// application after a restart even if the socket is still registered
+		// in the kernel by the old application due to stale connections from
+		// clients.
+		ret = setsockopt($1, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int));
+		if (-1 == ret) {
+			syslog(LOG_WARNING, "%s:%d:%s: setsockopt: %s", __FILE__, __LINE__, __func__, strerror(errno));
+			// We don't care if this doesn't work so much - we can run without REUSEADDR.
+		}
+
+		// Bind the socket to the port
+		ret = bind($1, p->ai_addr, p->ai_addrlen);
+		if (-1 == ret) {
+			// Ok, we couldn't bind this socket - close this socket and try the
+			// next hit from getaddrinfo.
+			syslog(LOG_WARNING, "%s:%d:%s: bind: %s", __FILE__, __LINE__, __func__, strerror(errno));
+			close($1);
+			continue;
+		}
+
+		// If we get here, it means that we've successfully bound up a tcp
+		// socket. We don't need to try any more results from getaddrinfo.
+		// Break out of the loop.
+		break;
+	}
+	// Remember to free up the servinfo data!
+	freeaddrinfo(servinfo);
+
+	// If p is NULL, it means that the above loop went through all of the
+	// results from getaddrinfo and never broke out of the loop - so we have no
+	// valid socket.
+	if (NULL == p) {
+		syslog(LOG_ERR, "%s:%d:%s: failed to bind to any address", __FILE__, __LINE__, __func__);
+		return -1;
+	}
+
+	// At this point, we have successfully bound up a port. Now we just need to
+	// listen for connection on the port.
+	ret = listen($1, TCP_LISTEN_BACKLOG);
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d:%s: listen: %s", __FILE__, __LINE__, __func__, strerror(errno));
+		return -1;
+	}
+	${0}
 # getopt
 snippet getopt
 	int choice;
@@ -374,12 +449,6 @@ snippet .
 snippet stdh
 	#pragma once
 
-	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
-	// glibc-specific features. Being able to compile to e.g. musl or uclibc
-	// makes porting to embedded linux systems much easier (and generally
-	// pressures the programmer into stricter and better programming practices).
-	#define _POSIX_C_SOURCE 201805L
-
 	#include <stdlib.h>
 	#include <stdint.h>
 	#include <stdbool.h>
@@ -392,7 +461,7 @@ snippet stdh
 	#include <sys/stat.h>
 	#include <pthread.h>
 
-	struct app {
+	struct `vim_snippets#Filename('$1')`_s {
 		sigset_t sigset;
 		int socket_pair[2];
 		pthread_t serial_task;
@@ -400,9 +469,8 @@ snippet stdh
 		int serial_task_fd;
 		int serial_task_fd_watchdog;
 	};
-
-
-snippet temp
+	${0}
+snippet stdc
 	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
 	// glibc-specific features. Being able to compile to e.g. musl or uclibc
 	// makes porting to embedded linux systems much easier (and generally
@@ -419,26 +487,25 @@ snippet temp
 	#include <string.h>
 	#include <syslog.h>
 	#include <sys/stat.h>
+	#include <sys/epoll.h>
 
-	#include "`vim_snippets#Filename('$1.h')`" // (snippet: 'stdh')
+	#include "`vim_snippets#Filename('$1.h')`"
 
-	int main(const int argc, const char *argv[])
+	int main (
+		const int argc,
+		const char *argv[]
+	)
 	{
 
 		int ret = 0;
 
 		openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
 
-		struct app app = {0};
-		ret = `vim_snippet#Filename('$1')`_init(&app);
-		if (-1 == ret) {
-			syslog(LOG_ERR, "%s:%d: 
-		}
+		struct `vim_snippets#Filename('$1')`_s `vim_snippets#Filename('$1')` = {0};
 
 		exit(EXIT_SUCCESS);	
 	}
-
-
+	${0}
 ## epolltemp
 snippet epolltemp
 	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
@@ -496,14 +563,6 @@ snippet init
 
 
 ## common includes
-snippet feat
-	// Try to not define _GNU_SOURCE or _DEFAULT_SOURCE, since those enable
-	// glibc-specific features. Being able to compile to e.g. musl or uclibc
-	// makes porting to embedded linux systems much easier (and generally
-	// pressures the programmer into stricter and better programming practices).
-	#define _POSIX_C_SOURCE 201805L
-
-
 snippet icom
 	#include <stdlib.h>
 	#include <stdint.h>
@@ -529,9 +588,7 @@ snippet itimerfd
 
 
 snippet iepoll
-	#include <sys/epoll.h>
-
-
+	#include <sys/epoll.h>${0}
 snippet ierrno
 	#include <errno.h>
 
@@ -542,16 +599,17 @@ snippet pipe
 	// $1[0] contains the read-end of the pipe, $1[1] contains the write-end.
 	ret = pipe2(${1:app->pipe}, O_CLOEXEC | O_NONBLOCK);
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: pipe2: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: pipe2: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
-	}
+	}${0}
 snippet socketpair
 	// a bidirectional communication channel between threads/forks
 	ret = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0, ${1:app->socketpair});
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: socketpair: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: socketpair: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
+	${0}
 ## open files
 snippet open
 	// open(2) flags:
@@ -590,23 +648,19 @@ snippet syslog
 	//   * err     - syslog() error message
 	//   * info    - syslog() info message
 	// Remember to #include <syslog.h> (snip 'isyslog')
-
-
-
+	${0}
 snippet openlog
 	// Remember to #include <syslog.h> (snip isyslog)
 	openlog("${1:`vim_snippets#Filename('$1')`}", LOG_CONS | LOG_PID, LOG_USER);
-
-
-
+	${0}
 snippet err
-	syslog(LOG_ERR, "%s:%d: ${1:func}: %s", __func__, __LINE__, strerror(errno));
-
-
+	syslog(LOG_ERR, "%s:%d:%s: ${1:func}: %s", __FILE__, __LINE__, __func__, strerror(errno));
+	${0}
+snippet warn
+	syslog(LOG_WARNING, "%s:%d:%s: ${1:func}: %s", __FILE__, __LINE__, __func__, strerror(errno));
+	${0}
 snippet info
-	syslog(LOG_INFO, "${1:msg}"${2:});
-
-
+	syslog(LOG_INFO, "%s:%d:%s: ${1:msg}", __FILE__, __LINE__, __func__);${0}
 ## Epoll
 snippet epoll
 	// NOTE TO SELF: snippets available for epoll:
@@ -649,7 +703,7 @@ snippet epr
 		NULL
 	);
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: epoll_ctl: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
 
@@ -664,7 +718,7 @@ snippet epd
 		NULL
 	);
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: epoll_ctl: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: epoll_ctl: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
 
@@ -707,7 +761,7 @@ snippet epw
 	int ep_events_len = 0;
 	struct epoll_event ep_events[EPOLL_NUM_EVENTS];
 	for (ep_events_len = epoll_wait(${1:`vim_snippets#Filename('$1')`->epoll_fd}, ep_events, EPOLL_NUM_EVENTS, -1);
-	     ep_events_len > 0;
+	     ep_events_len > 0 || (-1 == ep_events_len && EINTR == errno);
 	     ep_events_len = epoll_wait($1, ep_events, EPOLL_NUM_EVENTS, -1))
 	{
 		// (snippet: epev)
@@ -736,6 +790,7 @@ snippet epev
 				return ret;
 			}
 		}
+		return 0;
 	}
 	${0}
 snippet epdisp
@@ -785,7 +840,7 @@ snippet timerfds
 		/* old_ts    = */ NULL
 	);
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: timerfd_settime: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: timerfd_settime: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
 
@@ -799,27 +854,24 @@ snippet signal
 	//   * sigemptyset
 	//   * sigaddset
 	//   * sigprocmask
+	//   * signalfd
 	// Remember to #include <signal.h> (snip 'isignal') and set feature test def
 
 
 snippet sigemptyset
 	ret = sigemptyset(${1:app->sigset});
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigemptyset: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: sigemptyset: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
-
-
-
+	${0}
 snippet sigaddset
 	ret = sigaddset(${1:app->sigset}, ${2:SIGPIPE});
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: sigaddset: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
-
-
-	
+	${0}
 snippet sigprocmask
 	ret = sigprocmask(
 			/* how = */ SIG_BLOCK,
@@ -827,50 +879,21 @@ snippet sigprocmask
 			/* old = */ NULL
 	);
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigprocmask: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: sigprocmask: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
-
-
-
+	${0}
 snippet sigblock
-	// block signals; use sigwaitinfo to synchronously receive these signals instead.
-	ret = sigemptyset(${1:app->sigset});
-	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigemptyset: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
-	ret = sigaddset($1, SIGPIPE);
-	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
-	ret = sigaddset($1, SIGTERM);
-	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
-	ret = sigaddset($1, SIGINT);
-	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigaddset: %s", __func__, __LINE__, strerror(errno));
-		return -1;
-	}
-
 	ret = sigprocmask(
 			/* how = */ SIG_BLOCK,
-			/* set = */ $1,
-			/* old = */ NULL
+			/* &sigset = */ ${1:&sigset},
+			/* &oldset = */ NULL
 	);
 	if (-1 == ret) {
-		syslog(LOG_ERR, "%s:%d: sigprocmask: %s", __func__, __LINE__, strerror(errno));
+		syslog(LOG_ERR, "%s:%d:%s: sigprocmask: %s", __FILE__, __LINE__, __func__, strerror(errno));
 		return -1;
 	}
-
-
-
+	${0}
 snippet sigw
 	siginfo_t siginfo;
 	int signal_number = 0;
@@ -887,8 +910,29 @@ snippet sigw
 		syslog(LOG_ERR, "%s:%d: sigwaitinfo: %s", __func__, __LINE__, strerror(errno));
 		return -1;
 	}
-
-
+	${0}
+snippet signalfd
+	${1:app->signal_fd} = signalfd(
+		/* fd = */ -1,
+		/* &sigset = */ ${2:&sigset},
+		/* flags = */ SFD_NONBLOCK | SFD_CLOEXEC
+	);
+	if (-1 == $1) {
+		syslog(LOG_ERR, "%s:%d:%s: signalfd: %s", __FILE__, __LINE__, __func__, strerror(errno));
+		return -1;
+	}
+	${0}
+snippet sigfillset
+	ret = sigfillset(${1:app->sigset});
+	if (-1 == ret) {
+		syslog(LOG_ERR, "%s:%d:%s: sigfillset: %s", __FILE__, __LINE__, __func__, strerror(errno));
+		return -1;
+	}
+	${0}
+snippet sigset
+	sigset_t sigset = {0};
+	${0}
+	// use snip sigemptyset, sigfillset, sigaddset to add stuff
 ## threading
 snippet pthread
 	// NOTE TO SELF: snippets available for pthread:
